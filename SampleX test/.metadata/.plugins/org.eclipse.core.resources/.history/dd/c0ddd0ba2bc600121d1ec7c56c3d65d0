@@ -1,0 +1,897 @@
+package testBob;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.ListIterator;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.event.*;
+
+
+public class Case1 extends JComponent {
+	// The dimensions of the application's window.
+	private static final int winWidth=800;
+	private static final int winHeight=600;
+	// The standard sensor dimension
+	int senDim = 10;
+	// The list of all the object-parts that compose the machine.
+	private static ArrayList<MechPart> mechparts = new ArrayList<MechPart>();
+		
+	public static void main(String[] args) {
+		// invokeLater takes a Runnable object and queues it to be processed by EventDispatcher Thread.
+		// The run method will be called after all queued events are processed.
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				// creates a new frame named testMech
+				JFrame f = new JFrame("TestMech");
+				// defines the close operation
+				f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+				// an instance of Case1 is created
+				Case1 application = new Case1();
+				// sets the size of the application window
+				// setPreferredSize is preferred over setSize when a LayoutManager is used
+				application.setPreferredSize(new Dimension(winWidth,winHeight));
+				
+				// Adds the pane where the components will be drawn to the frame
+				f.add(new JScrollPane(application),BorderLayout.CENTER);
+				// Causes this Window to be sized to fit the preferred size and layouts of its subcomponents. 
+				f.pack();
+				// creates the parts of the machine
+				application.createParts();
+				// tells that the location where the window will appear will be determined by the OS
+				f.setLocationByPlatform(true);
+				// make the frame visible
+				f.setVisible(true);
+			} // close run method
+		}); // close Runnable
+
+	} // close main method
+	
+	public Case1() {
+		this.setOpaque(true);
+		this.addMouseListener(new MouseHandler());
+		 
+	} // close Case1 constructor method
+	
+	
+	// CreateParts methods creates the higher level objects in the main method.
+	// The subcomponents are created inside the higher level objects.
+	public void createParts() {
+		// get the window dimensions to specify the parts' position
+		int winW=winWidth;
+		int winH=winHeight;
+		// Carrier Lock Sensor -----------------------------------------
+		mechparts.add(new Sensor(new String("CL"),new Point(winW-senDim,winH-senDim),
+					  new Dimension(senDim,senDim),new Color(228,114,27)));
+		// Carrier Start Sensors ---------------------------------------
+		for (int i=0; i<6; i++) {
+			mechparts.add(new Sensor(new String("SC"+(i+1)), new Point(winW-senDim,215+50*i),
+					      new Dimension(senDim,senDim),new Color(30,137,208)));
+		} // close loop
+		// Carrier End Sensors ------------------------------------------
+		for (int i=0; i<6; i++) {
+			mechparts.add(new Sensor(new String("EC"+(i+1)), new Point(100,215+50*i),
+						  new Dimension(senDim,senDim),new Color(92,79,172)));
+		} // close loop
+		// Z Motion Sensors ---------------------------------------------
+		mechparts.add(new Sensor(new String("ZT"), new Point(20,0),
+					  new Dimension(2*senDim,senDim),new Color(75,148,89)));
+		for (int i=1; i<7; i++) {
+			mechparts.add(new Sensor(new String("Z"+(i)), new Point(20,50+50*i),
+						  new Dimension(2*senDim,senDim),new Color(75,148,89)));
+		} // close loop
+		mechparts.add(new Sensor(new String("ZB"), new Point(20,400),
+				  new Dimension(2*senDim,senDim),new Color(75,148,89)));
+		// Carriers -----------------------------------------------------
+		for (int i=0; i<6; i++) {
+			mechparts.add(new PlateCarrier(new String("carrier"+(i+1)), new Point(610,215+50*i),
+					      new Dimension(180,10),new Color(0,100,150)));
+		} // close loop
+		// Head  --------------------------------------------------------
+		// actually all the parts that are moved through the head motion (head sensors and robot)
+		// are create inside the head base object
+		mechparts.add(new HeadBase(new String("Head"), new Point(110,0), 
+						new Dimension(180,10), new Color(133,144,246)));
+		
+		// The HeadBase contains the HeadPuller, HeadPlunger and HeadMagnet
+		// also the HPD and HPU sensors
+		// finally the Robot and the start and end robot sensors
+		MechPart temp=Investigator.find((ArrayList <MechPart>) mechparts, "tag", "Head");
+		temp.extraParts.add(new HeadPuller(new String("hpuller"), new Point(temp.p.x,temp.p.y+55), 
+											new Dimension(180,10), new Color(100,116,255)));
+		temp.extraParts.add(new HeadPlunger(new String("hplunger"), new Point(temp.p.x,temp.p.y+10), 
+											new Dimension(180,10), new Color(100,116,255)));
+		temp.extraParts.add(new HeadMagnet(new String("hmagnet"), new Point(temp.p.x,temp.p.y+105), 
+											new Dimension(180,10), new Color(56,76,252)));
+		temp.extraParts.add(new Robot(new String("robot"), new Point(temp.p.x+575,temp.p.y+105-1), 
+										new Dimension(30,30), new Color(172,36,81)));
+		temp.extraParts.add(new Sensor(new String("RE"), new Point(temp.p.x+65,temp.p.y+125), 
+										new Dimension(senDim,senDim), new Color(172,36,81)));
+		temp.extraParts.add(new Sensor(new String("RS"), new Point(temp.p.x+605,temp.p.y+125), 
+										new Dimension(senDim,senDim), new Color(172,36,81)));
+		temp.extraParts.add(new Sensor(new String("HMD"), new Point(temp.p.x,temp.p.y+35), 
+										new Dimension(2*senDim,senDim-5), new Color(24,45,181)));
+		temp.extraParts.add(new Sensor(new String("HMP"), new Point(temp.p.x+160,temp.p.y+50), 
+										new Dimension(2*senDim,senDim-5), new Color(24,45,181)));
+		
+		// the HeadPuller has only one sensor
+		MechPart tempX=Investigator.find((ArrayList <MechPart>) temp.extraParts, "tag", "hpuller");
+		tempX.extraParts.add(new Sensor(new String("HPD"), new Point(tempX.p.x,tempX.p.y+5), 
+										new Dimension(2*senDim,senDim-5), new Color(24,45,181)));
+		
+		// HeadMagnet has 2 sensors on it
+		tempX=Investigator.find((ArrayList <MechPart>) temp.extraParts, "tag", "hmagnet");
+		tempX.extraParts.add(new Sensor(new String("HPU"), new Point(tempX.p.x+160,tempX.p.y+5), 
+										new Dimension(2*senDim,senDim-5), new Color(24,45,181)));
+		tempX.extraParts.add(new Sensor(new String("HPM"), new Point(tempX.p.x,tempX.p.y+5), 
+										new Dimension(2*senDim,senDim-5), new Color(24,45,181)));
+		
+		// the robot carries 4 sensors which are place in the extraParts array
+		tempX=Investigator.find((ArrayList <MechPart>) temp.extraParts, "tag", "robot");
+		Color senColor = new Color(172,36,81);
+		Point[] senPoints = new Point[4]; // the array that holds the coordinates of the sensors
+		senPoints[0]=new Point(tempX.p.x+10, tempX.p.y);
+		senPoints[1]=new Point(tempX.p.x+10, tempX.p.y+20);
+		senPoints[2]=new Point(tempX.p.x   , tempX.p.y+10);
+		senPoints[3]=new Point(tempX.p.x+20, tempX.p.y+10);
+		// The sensors are created here (inside robot object and assigned to extraParts array)
+		for (int i=0; i<senPoints.length; i++) {
+			tempX.extraParts.add(new Sensor(new String("R"+(i+1)), senPoints[i], 
+											new Dimension(senDim,senDim), senColor));
+			
+		} // close loop
+		
+	} // close createParts method
+	
+	// paint is the method called by the repaint() method. 
+	@Override
+	public void paint(Graphics g) { // inherited from JComponent
+		// calls the parent paint method
+		super.paint(g);
+		// repaints the window in order to delete what has been painted before
+		g.setColor(Color.white);
+		g.fillRect(0, 0, getWidth(), getHeight());
+		// paints the green rectangle on the left of the panel
+		g.setColor(new Color(75,148,89));
+		g.fillRect(0, 0, 20, 600);
+		
+		// draws all the parts of the machine
+		for (MechPart m : mechparts) {
+			m.paint(g);
+		} // close loop
+		
+	} // close paintComponent method
+	
+	
+	// MechPart is defined as abstract and it must be subclassed
+	private abstract class MechPart {
+		public String tag; // the name of each part
+		Point p; // the upper left corner of the object
+		Dimension d; // the width and height
+		Color color; // the color of the object
+		boolean selected;
+		ArrayList <MechPart> extraParts = new ArrayList<MechPart>();; // an array to hold the sub-objects of the part (e.g. sensors)
+		Rectangle b = new Rectangle(); // the rectangle is used to define the area of the object
+		int offset; // is the distance measured in pixels that the object can move 
+		Point endPos; // is the position where the objects stops the motion
+		
+		public MechPart(String tag, Point p, Dimension d, Color color) {
+			this.tag=tag; // the parts name
+			this.color=color;
+			updatePos(p,d); // the method is used to define the coordinates of the objects
+							// and the area it occupies through Rectangle class
+		} // close MechPart constructor method
+		
+		public void updatePos(Point p, Dimension d){
+			this.p=p; // the parts upper left corner coordinates
+			this.d=d; // the parts width and height
+			this.b.setBounds(p.x,p.y,d.width,d.height);
+		} // close setBoundary method
+		
+		// the paint method will be overridden from the subclasses
+		// this paint method is NOT called by the repaint method
+		public void paint(Graphics g) {
+			g.setColor(this.color);
+		} // close paint method
+		
+		// move method describes the movement of the object (if any)
+		public void move(int sp){}
+		
+		// this method defines the position of an object's subcomponents if any
+		public void defineSubPosition(){}
+		
+	} // close MechPart class
+	
+	
+	private class Sensor extends MechPart {
+		
+		public Sensor(String tag,Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class
+		} // close Sensor constructor method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			g.fillRect(p.x,p.y,d.width,d.height);
+		} // close paint method
+		
+	} // close Sensor class
+	
+	
+	private class PlateCarrier extends MechPart {
+		
+		public PlateCarrier(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class
+		} // close PlateCarrier constructor method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			int posX=p.x; int posY=p.y; int dimX=d.width; int dimY=d.height;
+			g.fillRect(posX,posY,dimX/2-15,dimY);
+			g.fillRect(posX+dimX/2+15,posY,dimX/2-15,dimY);
+			g.drawLine(posX+dimX/2-15,posY,posX+dimX/2+15,posY);
+			// observe the -1 in the y-position definition
+			g.drawLine(posX+dimX/2-15,posY-1+dimY,posX+dimX/2+15,posY+dimY-1);
+		} // close paint method
+	} // close PlateCarrier class
+	
+	
+	private class Robot extends MechPart {
+		
+		public Robot(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class	
+			
+		} // close Robot constructor method
+		
+		@Override
+		public void defineSubPosition() {
+			super.defineSubPosition();
+			MechPart carrier=handleCarriers();
+			
+			Point[] senPoints = new Point[4]; // the array that holds the coordinates of the sensors
+			senPoints[0]=new Point(p.x+10,p.y+1);
+			senPoints[1]=new Point(p.x+10,p.y+20+1);
+			senPoints[2]=new Point(p.x	 ,p.y+10+1);
+			senPoints[3]=new Point(p.x+20,p.y+10+1);
+			for (int i=0; i<senPoints.length; i++) {
+				extraParts.get(i).updatePos(senPoints[i], new Dimension(senDim,senDim));
+			} // close loop
+			
+			if (carrier!=null) {
+				Point carrierPos = new Point(p.x-carrier.d.width/2+this.d.width/2,carrier.p.y);
+				Dimension d = carrier.d;
+				carrier.updatePos(carrierPos, d);
+			} // close if
+		} // close defineSubPosition method
+		
+		public MechPart handleCarriers(){
+			MechPart temp2 = null;
+			MechPart carrier = null;
+			HeadBase temp = (HeadBase) Investigator.find((ArrayList <MechPart>) mechparts, "tag", "Head");
+			
+			if (temp.vertPosition>0 && temp.vertPosition<7) {
+				temp2 = Investigator.find((ArrayList <MechPart>) mechparts, 
+						"tag", "carrier"+temp.vertPosition);
+				boolean check = this.b.intersects(temp2.b);
+				
+				if (check) {
+				carrier = temp2;
+				} // close if
+			} // close if
+			System.out.println(carrier);
+			return carrier;
+		} // close handle Carriers method
+		
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			// drawRect is different from fillRect
+			g.drawRect(p.x,p.y,d.width,d.height);
+			// we draw the extra parts of the robot (here the sensors)
+			for (MechPart i : extraParts) {
+			i.paint(g);	
+			} // close loop
+		} // close paint method
+		
+		
+		
+		@Override
+		public void move(int sp){
+			// we need these variables to be final so we can use them inside a new Thread.
+			final Robot base=this; // is a final reference for this object
+			final int speed; // defines the pixel speed
+			final int initPos; // defines the position where the object starts each motion every time
+			final int stopPos; // defines the position where the object stops
+			
+			// the extreme positions of the motion are initialized if they haven't already
+			if (base.offset==0){
+				MechPart temp = Investigator.find((ArrayList <MechPart>) mechparts, "tag", "Head");
+				MechPart re = Investigator.find((ArrayList <MechPart>) temp.extraParts, "tag", "RE");
+				MechPart rs = Investigator.find((ArrayList <MechPart>) temp.extraParts, "tag", "RS");
+				this.offset = rs.p.x-re.p.x-re.d.width-this.d.width;
+				this.endPos = new Point(p.x-this.offset,p.y);
+			} // end if
+			
+			// the extreme positions of the motion
+			initPos=base.p.x;
+			stopPos=base.endPos.x;
+			
+			// determines the direction of the movement depending on whether the part is
+			// at the upper or the lower position
+			if (base.p.x < base.endPos.x) {
+			speed=sp;
+			} else {
+			speed=-sp;
+			} // close if
+			
+			// the object has moved to the other extreme position. 
+			// with this line we change the end position of the object so that 
+			// it can move next time to the other extreme position
+			this.endPos=new Point (initPos,endPos.y);
+			
+			// we create a new thread where the motion of the object will take place
+			new Thread() {
+			public void run() { // run method is actually what is done in the new thread
+					
+			while (base.p.x != stopPos) {
+			// increase the position of the base by the speed defined
+			base.p.x=base.p.x+speed;
+			// updates the coordinates of the object when the motion stops
+			base.updatePos(new Point(base.p.x,base.p.y),
+					new Dimension(base.d.width,base.d.height));
+			// this repaint calls the paint method of the JComponent and NOT of this part	
+			repaint();
+			// pauses the Thread for 20 ms, so we can see the motion
+			// otherwise the motion would be instantaneous
+			try {Thread.sleep(20);}
+			catch (Exception ex) {}
+			} // close loop
+			
+			base.b.x=base.p.x; // defines the position of the rectangle
+			} // close run
+			}.start(); // close Thread
+			
+			// updates the coordinates of the object when the motion stops
+			
+		} // close move method
+		
+		
+	} // close Robot class
+	
+	
+	private class HeadPuller extends MechPart {
+				
+		public HeadPuller(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class
+			this.offset=5;
+			this.endPos= new Point(p.x,p.y+this.offset);
+		} // close HeadPuller constructor method
+		
+		public void defineSubPosition() {
+			super.defineSubPosition();
+			MechPart temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "HPD");
+			temp.updatePos(new Point(p.x,p.y+5), new Dimension(temp.d.width,temp.d.height));
+		} // close definePosition method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the paint method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			// the following point-arrays are required to draw a polygon shaped object
+			int posX=p.x; int posY=p.y;
+			int[] xPos = new int[6];
+			int[] yPos = new int[6];
+			xPos[0]=posX; xPos[1]=posX+180; xPos[2]=posX+180; xPos[3]=posX+20; xPos[4]=posX+20; xPos[5]=posX; 
+			yPos[0]=posY; yPos[1]=posY; yPos[2]=posY+10; yPos[3]=posY+10; yPos[4]=posY+5; yPos[5]=posY+5; 
+			g.fillPolygon(xPos,yPos,xPos.length);
+			
+			// the extra parts are drawn (sensor)
+			for (MechPart i : extraParts) {
+				i.paint(g);	
+			} // close loop
+		} // close paint method
+		
+		@Override
+		// move method defines the motion that the object can do
+		public void move(int sp){
+			// we need these variables to be final so we can use them inside a new Thread.
+			final HeadPuller base=this; // is a final reference for this object
+			final int speed; // defines the pixel speed
+			final int initPos; // defines the position where the object starts each motion every time
+			final int stopPos; // defines the position where the object stops
+			
+			// the extreme positions of the motion
+			initPos=this.p.y;
+			stopPos=this.endPos.y;
+			
+			// determines the direction of the movement depending on whether the part is
+			// at the upper or the lower position
+			if (this.p.y < this.endPos.y) {
+			speed=sp;
+			} else {
+			speed=-sp;
+			} // close if
+			
+			// the object has moved to the other extreme position. 
+			// with this line we change the end position of the object so that 
+			// it can move next time to the other extreme position
+			this.endPos=new Point(endPos.x, initPos);
+			
+			// we create a new thread where the motion of the object will take place
+			new Thread() {
+			public void run() { // run method is actually what is done in the new thread
+				while (base.p.y != stopPos) {
+					// increase the position of the base by the speed defined
+					base.p.y=base.p.y+speed;
+					base.b.y=base.p.y; // defines the position of the rectangle
+					// updates the coordinates of the object when the motion stops
+					base.updatePos(new Point(base.p.x,base.p.y),
+								new Dimension(base.d.width,base.d.height));
+					// this repaint calls the paint method of the JComponent and NOT of this part
+					repaint();
+					// pauses the Thread for 20 ms, so we can see the motion
+					// otherwise the motion would be instantaneous
+					try {Thread.sleep(20);}
+					catch (Exception ex) {} // catches the Exception thrown
+				} // close loop
+				
+			} // close run
+			}.start(); // close Thread
+			
+		} // close move method
+		
+	} // close HeadPuller class
+	
+	private class HeadPlunger extends MechPart {
+				
+		public HeadPlunger(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class
+			this.offset=15;
+			this.endPos= new Point(p.x,p.y+this.offset);
+		} // close HeadPlunger constructor method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			g.fillRect(p.x,p.y,d.width,d.height);
+		} // close draw method
+		
+		public void move(int sp){
+			// we need these variables to be final so we can use them inside a new Thread.
+			final HeadPlunger base=this; // is a final reference for this object
+			final int speed; // defines the pixel speed
+			final int initPos; // defines the position where the object starts each motion every time
+			final int stopPos; // defines the position where the object stops
+			
+			// the extreme positions of the motion
+			initPos=this.p.y;
+			stopPos=this.endPos.y;
+			
+			// determines the direction of the movement depending on whether the part is
+			// at the upper or the lower position
+			if (this.p.y < this.endPos.y) {
+			speed=sp;
+			} else {
+			speed=-sp;
+			} // close if
+			
+			// the object has moved to the other extreme position. 
+			// with this line we change the end position of the object so that 
+			// it can move next time to the other extreme position
+			this.endPos=new Point (endPos.x,initPos);
+			
+			// we create a new thread where the motion of the object will take place
+			new Thread() {
+			public void run() { // run method is actually what is done in the new thread
+					
+			while (base.p.y != stopPos) {
+			// increase the position of the base by the speed defined
+			base.p.y=base.p.y+speed;
+			base.b.y=base.p.y; // defines the position of the rectangle
+			// updates the coordinates of the object when the motion stops
+			base.updatePos(new Point(base.p.x,base.p.y),
+					new Dimension(base.d.width,base.d.height));
+			// this repaint calls the paint method of the JComponent and NOT of this part	
+			repaint();
+			// pauses the Thread for 20 ms, so we can see the motion
+			// otherwise the motion would be instantaneous
+			try {Thread.sleep(20);}
+			catch (Exception ex) {}
+			} // close loop
+			} // close run
+			}.start(); // close Thread
+			
+			
+		} // close move method
+		
+	} // close HeadPlunger class
+	
+	
+	private class HeadMagnet extends MechPart {
+		
+		
+		public HeadMagnet(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class
+			this.offset=0;
+			this.endPos= new Point(p.x,p.y-this.offset);
+		} // close HeadMagnet constructor method
+		
+		@Override
+		public void defineSubPosition() {
+			MechPart temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "HPU");
+			temp.updatePos(new Point(p.x+160,p.y+5), new Dimension(2*senDim,senDim-5));
+			temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "HPM");
+			temp.updatePos(new Point(p.x,p.y+5), new Dimension(2*senDim,senDim-5));
+		} // close definePosition method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			// the following point-arrays are required to draw a polygon shaped object
+			int posX=this.p.x; int posY=this.p.y;
+			int[] xPos = new int[8];
+			int[] yPos = new int[8];
+			xPos[0]=posX; xPos[1]=posX+180; xPos[2]=posX+180; xPos[3]=posX+160; xPos[4]=posX+160; xPos[5]=posX+20;
+			xPos[6]=posX+20; xPos[7]=posX; 
+			yPos[0]=posY; yPos[1]=posY; yPos[2]=posY+5; yPos[3]=posY+5; yPos[4]=posY+10; yPos[5]=posY+10; 
+			yPos[6]=posY+5; yPos[7]=posY+5; 
+			g.fillPolygon(xPos,yPos,xPos.length);
+
+			// the extra parts are drawn (sensors)
+			for (MechPart i : extraParts) {
+				i.paint(g);	
+			} // close loop
+			
+		} // close draw method
+		
+		public void move(int sp){
+			final HeadMagnet base=this; // is a final reference for this object
+			final int speed; // defines the pixel speed
+			final int initPos; // defines the position where the object starts each motion every time
+			final int stopPos; // defines the position where the object stops
+			MechPart a = null; // a variable where the reference of the HeadPuller will be stored
+			
+			// The following if assigns the hpuller as a reference variable
+			if (a==null){ // checks if any object is assigned to variable a
+				for (MechPart e: mechparts) {
+					if (e.tag.equals("Head")) {
+						a=e;
+						break;
+					} // close if
+				} // close loop
+				
+				for (MechPart e: a.extraParts) {
+					if (e.tag.equals("hpuller")) {
+						a=e;
+						break;
+					} // close if
+				} // close loop
+			} // close if
+			
+			// the extreme positions of the motion are initialized if they haven't already
+			if (base.offset==0){
+				base.offset=p.y-a.p.y-a.d.height;
+				base.endPos= new Point(p.x,p.y-base.offset);
+			} // end if
+			
+			initPos=base.p.y;
+			
+			// we define the position of the magnet plate in respect to the position of the 
+			// puller plate, because if the puller is offset then we cannot overrun it
+			if (base.p.y < base.endPos.y) {
+				stopPos=base.endPos.y;
+				speed=sp;
+			} else {
+				base.offset=p.y-a.p.y-a.d.height;
+				stopPos=p.y-base.offset;
+				speed=-sp;
+			} // close if
+			
+			// the object has moved to the other extreme position. 
+			// with this line we change the end position of the object so that 
+			// it can move next time to the other extreme position
+			this.endPos=new Point (endPos.x,initPos);
+			
+			
+			new Thread() { // we create a new thread where the motion of the object will take place
+				public void run() { // run method is actually what is done in the new thread
+					
+			while (base.p.y != stopPos) {
+				// increase the position of the base by the speed defined
+				base.p.y=base.p.y+speed;
+				base.b.y=base.p.y; // defines the position of the rectangle
+				// updates the coordinates of the object when the motion stops
+				base.updatePos(new Point(base.p.x,base.p.y),
+						new Dimension(base.d.width,base.d.height));
+				// this repaint calls the paint method of the JComponent and NOT of this part
+				repaint();
+				// pauses the Thread for 20 ms, so we can see the motion
+				// otherwise the motion would be instantaneous
+			try {Thread.sleep(20);}
+			catch (Exception ex) {}
+			} // close loop
+			
+				} // close run
+			}.start(); // close Thread
+			
+		} // close move method
+		
+	} // close HeadMagnet class
+	
+	private class HeadBase extends MechPart {
+		
+		int vertPosition=0;
+		
+		public HeadBase(String tag, Point p, Dimension d, Color color) {
+			super(tag, p, d, color); // calls the constructor of the super class	
+		} // close HeadBase constructor method
+
+		public void defineSubPosition(int speed) {
+			
+			// Define the endPositions of the head plates.
+			MechPart temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "hpuller");
+			temp.endPos.y=temp.endPos.y-speed;
+			temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "hplunger");
+			temp.endPos.y=temp.endPos.y-speed;
+			temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "hmagnet");
+			temp.endPos.y=temp.endPos.y-speed;
+						
+			for (MechPart i : extraParts) {
+				i.updatePos(new Point(i.p.x, i.p.y-speed),
+						new Dimension (i.d.width, i.d.height));
+			} // close loop
+			
+		} // close definePosition method
+		
+		@Override
+		public void paint(Graphics g) {
+			// calls the draw method of the superclass, else it would only call the commands specified in the subclass
+			super.paint(g); 
+			
+			MechPart temp=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "RE");
+			g.setColor(temp.color); 
+			// the line where the robot moves
+			// extraParts 4 and 5 are the start and end sensors of the robot
+			MechPart temp2=Investigator.find((ArrayList <MechPart>) this.extraParts, "tag", "RS");
+			g.drawLine(temp.p.x+10, temp.p.y+10-1, temp2.p.x, temp2.p.y+10-1);
+			
+			// paints the solid head base parts 
+			g.setColor(this.color);
+			int posX=p.x; int posY=p.y;
+			g.fillRect(posX, posY, d.width, d.height); // the upper part of the head (above the plungers)
+			// the coordinates for the creation of the polygon - static part of the HeadBase
+			int[] xPos = new int[8];
+			int[] yPos = new int[8];
+			xPos[0]=posX; xPos[1]=posX+20; xPos[2]=posX+20; xPos[3]=posX+180; 
+			xPos[4]=posX+180; xPos[5]=posX+160; xPos[6]=posX+160; xPos[7]=posX; 
+			yPos[0]=posY+40; yPos[1]=posY+40; yPos[2]=posY+35; yPos[3]=posY+35; 
+			yPos[4]=posY+50; yPos[5]=posY+50;  yPos[6]=posY+55; yPos[7]=posY+55; 
+			g.fillPolygon(xPos,yPos,xPos.length);
+						
+			// Draws the HeadPuller-Plunger-Magnet, Robot, Head and Robot Sensors
+			for (MechPart i : extraParts) {
+				// defineSubPosition is called recursively
+				i.defineSubPosition();
+				i.paint(g);	
+			} // close loop
+			
+		} // close draw method
+		
+		public void move(MechPart Part, int sp){
+			final HeadBase base=this;
+			final MechPart selPart=Part;
+			final int speed;
+			
+			if (base.p.y > selPart.p.y) {
+				speed=sp;
+				} else {
+				speed=-sp;
+				} // close if
+			
+			new Thread() {
+			public void run() { // run method is actually what is done in the new thread	
+			while (base.p.y != selPart.p.y) {
+			base.p.y=base.p.y-speed;
+			// the position of the subcomponents must also be defined
+			base.defineSubPosition(speed);
+			// updates the coordinates of the object when the motion stops
+			base.updatePos(new Point(base.p.x,base.p.y),
+					new Dimension(base.d.width,base.d.height));
+			// this repaint calls the paint method of the JComponent and NOT of this part
+			repaint();
+			// pauses the Thread for 20 ms, so we can see the motion
+			// otherwise the motion would be instantaneous
+			try {Thread.sleep(20);}
+			catch (Exception ex) {}
+			} // close loop
+				} // close run
+			}.start(); // close Thread
+			
+			
+		} // close move method
+		
+	} // close HeadBase class
+	
+	public class MouseHandler extends MouseAdapter {
+		int oldThread=Thread.activeCount();
+		int newThread;
+		
+		public void mousePressed(MouseEvent e) {
+			// activeCount gives the number of running threads
+			newThread=Thread.activeCount();
+			
+			/* 
+		     we need to check if the number of threads is the minimum possible
+			 we do this so only one part can move at a time. 
+			 For every motion we start a new thread. If we don't constrain the number of threads 
+			 then we will have many simultaneous motions that mess up the program function.
+			*/
+			if (oldThread==newThread) {
+			Motion motion = new Motion();
+			motion.setSelected(e.getPoint());
+			} // close if
+			
+		} // close mousePressed method
+		
+	} // close MouseHandler class
+	
+	
+	public class Motion {
+		MechPart selPart; // the part selected
+		final int speed=2; // the pixel motion speed
+		
+		// this method is used to check if a part is selected with the mouse
+		public void setSelected (Point chosenP) {
+			
+			for (MechPart part : mechparts) {
+				
+				// first we check if the part has subcomponents and if so we iterate through them
+				if (part.extraParts != null) {
+					for (MechPart exP:part.extraParts) {
+						if (exP.b.contains(chosenP)) {
+							exP.selected=true;
+							selPart=exP;
+							break;			
+						} // close if
+					} // close loop
+				} // close if
+				
+				// if no subcomponent is selected
+				if (part.b.contains(chosenP)) {
+					part.selected=true;
+					selPart=part;
+					break;
+				} // close if	
+				
+			} // close loop
+			
+			// if a part is selected call the move method of the Motion class (this)
+			if (selPart != null){
+				this.move();
+			} // close if
+			
+		} // close setSelected method
+		
+		public void move() {
+			if (selPart.tag.charAt(0)=='Z'){
+				final HeadBase temp = (HeadBase) Investigator.find((ArrayList <MechPart>) mechparts, "tag", "Head");
+				temp.move(selPart, speed);
+				MechPart tempX = Investigator.find((ArrayList <MechPart>) mechparts, "tag", "ZT");
+				temp.vertPosition= mechparts.indexOf(selPart) - mechparts.indexOf(tempX);
+			} else if (selPart.tag.equals("hpuller")) {
+				selPart.move(1);
+			} else if (selPart.tag.equals("hplunger")) {
+				selPart.move(1);
+			} else if (selPart.tag.equals("hmagnet")) {
+				selPart.move(1);
+			} else if (selPart.tag.charAt(0)=='r'){
+				selPart.move(5);
+			} // close if
+
+		} // close move method
+		
+	} // close Motion class
+	
+	/* Investigator class is used to find elements in Lists with specific attributes
+	 * to achieve that:
+	 *  it iterates through an ArrayList
+	 *  it gets the class of the specific item in the list
+	 *  it gets the field specified with the name given
+	 *  it compares it with the value given 
+	 *  The find method is overloaded for each type of value
+	 *  The above described technique is called reflection 
+	 *  
+	 *  It is important to state that in getField method the specified field MUST be PUBLIC 
+	 */
+	public static class Investigator {
+		
+		public static <Kind> Kind find (ArrayList<Kind> coll, String field, String value) {
+			Kind answer = null;
+			for (Kind obj: coll){
+				try {
+					if (obj.getClass().getField(field).get(obj).equals(value)) {
+						answer = obj;
+					} // close if
+				} catch (IllegalArgumentException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (NoSuchFieldException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (SecurityException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} 
+			} // close loop
+			return answer;
+		} // close find method
+		
+		public static <Kind> Kind find (ArrayList<Kind> coll, String field, char value) {
+			Kind answer = null;
+			for (Kind obj: coll){
+				String temp = null;
+				try {
+					temp = (String) obj.getClass().getField(field).get(obj);
+				} catch (IllegalArgumentException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IllegalAccessException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (NoSuchFieldException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (SecurityException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+					if (temp.charAt(0)==value) {
+						answer = obj;
+					} // close if
+				
+			} // close loop
+			return answer;
+		} // close find method
+		
+		public static <Kind> Kind find (ArrayList<Kind> coll, String field, int value) {
+			Kind answer = null;
+			for (Kind obj: coll){
+				int temp = 0;
+				try {
+					temp = obj.getClass().getField(field).getInt(obj);
+				} catch (IllegalArgumentException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IllegalAccessException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (NoSuchFieldException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (SecurityException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				if (temp==value) {
+					answer = obj;
+				} // close if
+				
+			} // close loop
+			return answer;
+		} // close find method
+		
+	} // close Investigator class
+	
+} // close Case1 class
+
